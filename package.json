@@ -1,0 +1,20 @@
+{
+  "name": "ipcortex-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shouston3/ipcortex-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/shouston3/ipcortex-app/issues"
+  },
+  "homepage": "https://github.com/shouston3/ipcortex-app#readme"
+}
