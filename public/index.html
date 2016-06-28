@@ -4,14 +4,27 @@
     <title>ipcortex</title>
     <link rel="stylesheet" href="./public/style.css">
     <script src="./public/zepto.js"></script>
+    <script src="https://fac1.ipcortex.net/cinclude/adapter.js"></script>
     <script src="https://fac1.ipcortex.net/api/api.js"></script>
   </head>
   <body>
     <button id="login">login</button>
     <h3>online</h3>
-    <ul id="online-container"></ul>
+    <ul id="online-container" class="online"></ul>
     <h3>offline</h3>
     <ul id="offline-container"></ul>
+    <div class="chatroom" style="display: none;" id="clone">
+  		<input class="chatclose" type="submit" value="Close"/>
+  		<div class="chattitle">
+  			Room Name
+  		</div>
+  		<textarea rows="20"></textarea>
+  		<div class="chatinput">
+  			<input type="text" size="30" placeholder="Enter text to chat"/>
+  			<input type="submit" value="Send"/>
+  		</div>
+      <input type="button" name="toggle" value="toggle">
+  	</div>
     <script src="./public/login.js"></script>
     <script src="./public/script.js"></script>
   </body>
