@@ -110,7 +110,42 @@ var Authenticate = function () {
     }
 
     function processFeed (av) {
-      console.log('av', av)
+      if (typeof av.remoteMedia != 'object')
+        return
+      var videos = []
+      var feed = document.getElementById(av.id)
+      for (var id in av.remoteMedia) {
+        var video = document.getElementById(id)
+        if (av.remoteMedia[id].status === 'offered') {
+          navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(function (stream) {
+              av.accept(stream)
+            })
+            .catch(function () {
+              console.log('failed')
+            })
+        } else if (av.remoteMedia[id].status === 'connected' && !video) {
+          video = document.createElement('video')
+          attachMediaStream(video, av.remoteMedia[id])
+          videos.push(video)
+          video.id = id
+          video.play()
+        } else if (av.remoteMedia[id].status !== 'connected' && video) {
+          video.parentNode.removeChild(video)
+        }
+      }
+      if (videos.length && !feed) {
+        feed = document.createElement('div')
+        document.body.appendChild(feed)
+        feed.id = av.id
+      }
+
+      videos.forEach(function (video) {
+        feed.appendChild(video)
+      })
+
+      if (feed && feed.children.length < 1)
+        feed.parentNode.removeChild(feed)
     }
 
     function runApp () {
