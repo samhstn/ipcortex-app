@@ -1,9 +1,74 @@
 var rooms = {};
 var media = {};
 var accepted = {};
+var mediaStream = null;
+var isTextChat = true;
 var TAG = 'IPC-VIDEO-CLIENT:';
 var host = 'https://fac1.ipcortex.net';
 IPCortex.PBX.Auth.setHost(host);
+
+function processRoom(Room) {
+  Room.addListener('update', function (room) {
+    if (rooms[room.roomID] && room.state === 'dead') {
+      rooms[room.roomID].elem.parentNode.removeChild(rooms[room.roomID].elem);
+      delete rooms[room.roomID];
+      return;
+    }
+    if (rooms[room.roomID].label !== room.label) {
+      rooms[room.roomID].label = room.label;
+      rooms[room.roomID].title.innerHTML = room.label + '(' + Room.roomID + ')';
+    }
+    /* If the room has come into existance due to a video request,
+       start video with the stored stream */
+    if (room.cID === media.cID && media.stream) {
+      console.log(TAG, 'New room, starting video chat');
+      /* Listen for updates on the Av instance */
+      room.videoChat(media.stream).addListener('update', processFeed);
+      media = {};
+    }
+
+    room.messages.forEach(function (message) {
+      rooms[room.roomID].text.value += '\n' + message.cN + ' :\n  ' + message.msg;
+      rooms[room.roomID].text.scrollTop = rooms[room.roomID].text.scrollHeight;
+    });
+  });
+  var elem = document.getElementById('clone').cloneNode(true);
+  elem.style.display = 'block';
+  elem.id = Room.roomID;
+  $('body').append(elem);
+
+  var thisRoom = rooms[Room.roomID] = {
+    room: Room,
+    elem: elem,
+    title: elem.getElementsByTagName('div')[0],
+    text: elem.getElementsByTagName('textarea')[0]
+  };
+
+  var inputs = elem.getElementsByTagName('input');
+  inputs[0].addEventListener('click', function () {
+    thisRoom.room.leave();
+  });
+  inputs[2].addEventListener('click', function () {
+    if (!inputs[1].value)
+      return;
+    thisRoom.room.post(inputs[1].value);
+    inputs[1].value = '';
+  });
+
+  inputs[3].addEventListener('click', function () {
+    isTextChat = !isTextChat;
+    if (isTextChat) {
+      mediaStream.getAudioTracks().forEach((track) => track.stop());
+      mediaStream.getVideoTracks().forEach((track) => track.stop());
+    } else {
+      navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        .then(function (stream) {
+          mediaStream = stream;
+          thisRoom.room.videoChat(stream).addListener('update', processFeed);
+        });
+    }
+  });
+}
 
 function processFeed(av) {
   /* Only process the Av instance if it has remote media */
@@ -78,34 +143,10 @@ function processContact(contact) {
     var offer = document.createElement('i');
     element.appendChild(offer);
     offer.className = 'material-icons contact-offer';
-    offer.innerHTML = 'video_call';
+    offer.innerHTML = 'chat';
     offer.addEventListener('click', function () {
       contact.chat();
     });
-    offer.addEventListener('click',
-      function () {
-        navigator.mediaDevices.getUserMedia({ audio: true, video: true }).then(
-          /* Grab the user media */
-          function (stream) {
-            /* Check to see if a room already exists to start video on */
-            for (var roomID in rooms) {
-              if (rooms[roomID].cID !== contact.cID)
-                continue;
-              /* Listen for updates on the Av instance */
-              rooms[roomID].videoChat(stream).addListener('update', processFeed);
-              return;
-            }
-            /* No room to start video, store stream and contact ID and open a new room */
-            media = { cID: contact.cID, stream: stream };
-            contact.chat();
-          }
-        ).catch(
-          function () {
-            console.log(TAG, 'getUserMedia failed');
-          }
-        );
-      }
-    );
   }
 }
 
@@ -123,23 +164,8 @@ function startTask() {
         }
       );
       /* Enable chat to allow feature (video negotiation) messages to be exchanged */
-      var chatEnabled = IPCortex.PBX.enableChat(function (room) {
-        /* Listen for updates to clean up dead rooms */
-        room.addListener('update', function (_room) {
-          if (rooms[_room.roomID] && _room.state === 'dead')
-            delete rooms[_room.roomID];
-        });
-        /* If the room has come into existance due to a video request,
-           start video with the stored stream */
-        if (room.cID === media.cID && media.stream) {
-          console.log(TAG, 'New room, starting video chat');
-          /* Listen for updates on the Av instance */
-          room.videoChat(media.stream).addListener('update', processFeed);
-          media = {};
-        }
-        rooms[room.roomID] = room;
-      }
-      );
+      var chatEnabled = IPCortex.PBX.enableChat(processRoom);
+
       if (chatEnabled) {
         console.log(TAG, 'Chat enable, enabling av feature');
         /* Register to receive new Av instances */
